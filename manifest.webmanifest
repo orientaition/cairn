@@ -1,0 +1,14 @@
+{
+  "name": "논문 한 입",
+  "short_name": "논문한입",
+  "description": "매일 조금씩, 쉬운 한국어로 논문을 읽는 앱",
+  "start_url": "./paperbite_index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FBFAF7",
+  "theme_color": "#2B4A7A",
+  "lang": "ko",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

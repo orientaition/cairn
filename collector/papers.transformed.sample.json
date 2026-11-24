@@ -1,0 +1,170 @@
+[
+  {
+    "id": "osf-psyarxiv-mh6jw_v1",
+    "field": "soc",
+    "tags": [
+      "정서·인지"
+    ],
+    "source": "PsyArXiv",
+    "title": "Anhedonia and Emotional Processing of Past- and Future-Directed Mental Representations: Behavioral and Event-Related Potential Evidence",
+    "authors": "Matthias Pillny, Kai Härpfer, Hannes Per Carsten, Anja Riesel, Julia Klawohn, Tania Marie Lincoln",
+    "date": "2026-11",
+    "lic": "ccby",
+    "url": "https://osf.io/preprints/psyarxiv/mh6jw_v1/",
+    "abstractRaw": "",
+    "collectedAt": "2026-11-24T12:41:27.658Z",
+    "sents": [
+      "무쾌감증(anhedonia)은 지금 느끼는 즐거움 자체가 줄어든다기보다, 기억하거나 상상한 긍정적 경험에서 정서적 가치를 끌어내기 어려운 상태일 수 있어요.",
+      "연구진은 일반 성인 48명에게 긍정·부정·중립 이미지를 보여준 뒤, 그걸 다시 떠올리게 하거나 비슷한 미래 경험을 상상하게 했어요.",
+      "그동안 뇌파에서 후기 양전위(LPP)를 400~4,000밀리초 구간에서 측정하고, 표준화된 척도로 무쾌감증 정도를 평가했어요.",
+      "무쾌감증이 높을수록 기억을 떠올릴 때 긍정·중립 자극의 LPP 차이가 1,000~2,000밀리초와 2,000~3,000밀리초 구간에서 줄었고, 긍정적 기억을 덜 즐겁게 느꼈어요.",
+      "반면 이미지를 직접 볼 때나 미래를 상상할 때는 이런 차이가 뚜렷하지 않아서, 긍정적 기억을 처리하는 방식이 무쾌감증과 특히 관련 있어 보여요."
+    ],
+    "quiz": [
+      {
+        "q": "이 연구가 참가자에게 시킨 과제가 아닌 것은?",
+        "opts": [
+          "실시간으로 다른 사람과 대화하기",
+          "이미지를 본 뒤 다시 떠올리기",
+          "비슷한 미래 경험 상상하기"
+        ],
+        "why": "과제는 이미지 시청·회상·상상 세 가지였어요."
+      },
+      {
+        "q": "무쾌감증이 높을수록 뚜렷하게 달랐던 시점은?",
+        "opts": [
+          "기억을 떠올릴 때",
+          "이미지를 처음 볼 때",
+          "미래를 상상할 때"
+        ],
+        "why": "네 번째 문장: 회상(recall) 시점에서만 차이가 뚜렷했어요."
+      }
+    ],
+    "terms": [
+      {
+        "t": "무쾌감증",
+        "d": "즐거움을 느끼거나 만들어내는 능력이 줄어든 상태"
+      },
+      {
+        "t": "LPP",
+        "d": "뇌파에서 정서적 자극에 반응해 나타나는 후기 양전위 신호"
+      }
+    ],
+    "en": [],
+    "needsTransform": false,
+    "canPersist": true,
+    "shareAlikeNotice": false
+  },
+  {
+    "id": "osf-psyarxiv-fjskz_v1",
+    "field": "soc",
+    "tags": [
+      "관계·공격성"
+    ],
+    "source": "PsyArXiv",
+    "title": "Neural Correlates of Partner Comparisons and Their Links to Intimate Partner Aggression",
+    "authors": "Sydney Kavanaugh, Alexandra Martelli, Samuel J. West, Emily Lasko, David Chester",
+    "date": "2026-11",
+    "lic": "ccby",
+    "url": "https://osf.io/preprints/psyarxiv/fjskz_v1/",
+    "abstractRaw": "",
+    "collectedAt": "2026-11-24T12:41:32.824Z",
+    "sents": [
+      "사람들은 자신을 친밀한 파트너와 자주 비교하는데, 이는 관계 유지와 친밀한 파트너 폭력(IPA) 가해에도 영향을 줘요.",
+      "연구진은 49쌍(96명)의 커플에게 fMRI를 찍으면서, 자신의 부정적·긍정적 특성을 파트너 및 평균적인 사람과 비교하게 했어요.",
+      "참가자들은 보통 자신을 남보다 낫게 평가했지만, 파트너와 비교할 때는 이런 자기 편향이 줄어들었어요.",
+      "파트너와 비교할 때(평균적인 사람과 비교할 때보다)는 DMPFC·설전부·TPJ 같은 정신화 네트워크와 DLPFC 활동이 더 커졌고, 특히 부정적 특성에서 그랬어요.",
+      "이 DLPFC·DMPFC 활동은 부정적 특성 비교에서는 IPA 가해와 더 관련 있었고, 긍정적 특성 비교에서는 덜 관련 있었어요."
+    ],
+    "quiz": [
+      {
+        "q": "연구 참가자 규모는?",
+        "opts": [
+          "49쌍(96명)",
+          "96쌍(192명)",
+          "49명"
+        ],
+        "why": "두 번째 문장: 49쌍, 96명이에요."
+      },
+      {
+        "q": "파트너 비교에서 활발해진 뇌 영역으로 언급되지 않은 것은?",
+        "opts": [
+          "1차 시각피질",
+          "DMPFC",
+          "DLPFC"
+        ],
+        "why": "언급된 영역은 DMPFC·설전부·TPJ·DLPFC예요."
+      }
+    ],
+    "terms": [
+      {
+        "t": "IPA",
+        "d": "친밀한 관계의 상대에게 가하는 폭력(intimate partner aggression)"
+      },
+      {
+        "t": "정신화 네트워크",
+        "d": "다른 사람의 생각·마음을 추측할 때 쓰는 뇌 영역들"
+      }
+    ],
+    "en": [],
+    "needsTransform": false,
+    "canPersist": true,
+    "shareAlikeNotice": false
+  },
+  {
+    "id": "osf-psyarxiv-np2ty_v3",
+    "field": "soc",
+    "tags": [
+      "공정성·의사결정"
+    ],
+    "source": "PsyArXiv",
+    "title": "Regulating Self-Interest: The Effect of Anodal tDCS over the Right Dorsolateral Prefrontal Cortex in the Ultimatum Game",
+    "authors": "Haim Assor, Jonathan Slater, Eliran Halali",
+    "date": "2026-11",
+    "lic": "ccby",
+    "url": "https://osf.io/preprints/psyarxiv/np2ty_v3/",
+    "abstractRaw": "",
+    "collectedAt": "2026-11-24T12:41:32.824Z",
+    "sents": [
+      "많은 사회적 상황에서 내 이익과 공정성·호혜성 같은 사회적 고려 사이에 갈등이 생겨요.",
+      "자기 이익을 추구하는 행동은 자동적인 반응이라, 억제하려면 인지적 통제가 필요하다고 알려져 있어요.",
+      "우측 배외측 전전두피질(rDLPFC)이 이런 자기 이익 행동을 조절하는 데 관여한다는 신경경제학 연구들이 있어요.",
+      "연구진은 최후통첩 게임(ultimatum game)에서 rDLPFC에 양극 경두개직류자극(tDCS)을 줘서 그 역할을 다시 살펴봤어요.",
+      "그 결과 자극을 준 쪽은 사람이 제안했든 컴퓨터가 무작위로 제안했든 불공정한 제안을 더 많이 거절해, rDLPFC가 공정성과 불평등 회피 둘 다에 관여한다고 볼 수 있었어요."
+    ],
+    "quiz": [
+      {
+        "q": "연구에서 자극을 준 뇌 부위는?",
+        "opts": [
+          "우측 배외측 전전두피질(rDLPFC)",
+          "좌측 해마",
+          "소뇌"
+        ],
+        "why": "세 번째·네 번째 문장: rDLPFC예요."
+      },
+      {
+        "q": "자극 후 나타난 변화는?",
+        "opts": [
+          "불공정한 제안을 더 많이 거절함",
+          "제안을 무조건 수락함",
+          "반응 시간이 느려짐"
+        ],
+        "why": "다섯 번째 문장 참고."
+      }
+    ],
+    "terms": [
+      {
+        "t": "tDCS",
+        "d": "두피에 약한 전류를 흘려 뇌 활동을 조절하는 자극 기법"
+      },
+      {
+        "t": "최후통첩 게임",
+        "d": "한 사람이 분배안을 제안하고 상대가 수락·거절을 정하는 경제 실험"
+      }
+    ],
+    "en": [],
+    "needsTransform": false,
+    "canPersist": true,
+    "shareAlikeNotice": false
+  }
+]
