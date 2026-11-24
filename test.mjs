@@ -306,9 +306,16 @@ t('PWA: manifest·서비스 워커·아이콘 파일이 있고 head에서 연결
 t('알림: 오늘 이미 읽었으면 다시 알리지 않는 가드가 있다', () => {
   assert.ok(html.includes('S.days.includes(todayKey())'), 'maybeNotify에 "오늘 이미 읽음" 가드가 있어야 함');
 });
-t('계정 병합: 테마·알림·측정 같은 기기별 설정은 합치지 않고 진행 기록 7개 필드만 돌려준다', () => {
+t('계정 병합: 테마·알림·측정 같은 기기별 설정은 합치지 않고 진행 기록 필드만 돌려준다', () => {
   const keys = Object.keys(P.mergeState({ xp: 1, theme: 'dark', notifyOn: true }, { xp: 2 })).sort();
-  assert.deepEqual(keys, ['days', 'done', 'fav', 'history', 'later', 'notes', 'review', 'xp']);
+  assert.deepEqual(keys, ['days', 'done', 'fav', 'history', 'later', 'notes', 'review', 'savedSearches', 'xp']);
+});
+t('계정 병합: 저장한 검색 결과도 id로 합쳐져서 중복 없이 모인다', () => {
+  const a = { savedSearches: [{ id: 'x1', title: 'A' }] };
+  const b = { savedSearches: [{ id: 'x1', title: 'A(다른 기기)' }, { id: 'x2', title: 'B' }] };
+  const m = P.mergeState(a, b);
+  assert.equal(m.savedSearches.length, 2);
+  assert.ok(m.savedSearches.some(x => x.id === 'x2'));
 });
 
 t('웹 검색: OpenAlex 역색인 초록을 문장으로 복원한다', () => {
@@ -927,7 +934,7 @@ async function flow() {
     assert.equal(await click('웹에서 논문 찾기'), true); await sleep(200);
     await ev(`document.querySelector('input[aria-label="웹 논문 검색"]').value='inequality'`);
     await ev(`document.querySelector('input[aria-label="웹 논문 검색"]').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}))`);
-    await waitFor(`!document.body.innerText.includes('찾는 중')`, 8000);
+    await waitFor(`!document.body.innerText.includes('찾는 중')`, 20000);
     const body = await text();
     assert.ok(/\d+건 찾았어요|실패했어요|결과가 없어요/.test(body), '검색 상태 메시지가 보여야 함: ' + body.slice(0, 200));
   });
@@ -937,7 +944,7 @@ async function flow() {
     assert.equal(await click('웹에서 논문 찾기'), true); await sleep(200);
     await ev(`document.querySelector('input[aria-label="웹 논문 검색"]').value='inequality'`);
     await ev(`document.querySelector('input[aria-label="웹 논문 검색"]').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}))`);
-    await waitFor(`!document.body.innerText.includes('찾는 중')`, 8000);
+    await waitFor(`!document.body.innerText.includes('찾는 중')`, 20000);
     const hasReadBtn = await ev(`[...document.querySelectorAll('button')].some(b=>b.textContent.includes('읽기 시작'))`);
     assert.ok(hasReadBtn, '초록이 있는 OpenAlex 결과 중 하나는 읽기 시작 버튼이 있어야 함');
     await ev(`[...document.querySelectorAll('button')].find(b=>b.textContent.includes('읽기 시작')).click()`); await sleep(200);
@@ -958,8 +965,36 @@ async function flow() {
     assert.equal(await click('웹에서 논문 찾기'), true); await sleep(200);
     await ev(`document.querySelector('input[aria-label="웹 논문 검색"]').value='memory'`);
     await ev(`document.querySelector('input[aria-label="웹 논문 검색"]').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}))`);
-    await waitFor(`!document.body.innerText.includes('찾는 중')`, 10000);
+    await waitFor(`!document.body.innerText.includes('찾는 중')`, 20000);
     assert.ok((await text()).includes('arXiv') || (await text()).includes('OSF'), '프록시로 가져온 결과가 하나는 보여야 함');
+  });
+
+  await ta('웹 검색 결과 저장: 저장하면 서재에 보이고, 삭제하면 사라진다', async () => {
+    await reset();
+    assert.equal(await click('웹에서 논문 찾기'), true); await sleep(200);
+    await ev(`document.querySelector('input[aria-label="웹 논문 검색"]').value='inequality'`);
+    await ev(`document.querySelector('input[aria-label="웹 논문 검색"]').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}))`);
+    await waitFor(`!document.body.innerText.includes('찾는 중')`, 20000);
+    const saveBtn = await ev(`(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()==='저장');return !!b;})()`);
+    assert.ok(saveBtn, '저장 버튼이 있어야 함');
+    await ev(`[...document.querySelectorAll('button')].find(x=>x.textContent.trim()==='저장').click()`); await sleep(150);
+    assert.equal((await state()).savedSearches.length, 1, '저장하면 S.savedSearches에 1건 쌓여야 함');
+    assert.equal(await ev(`[...document.querySelectorAll('button')].some(x=>x.textContent.trim()==='저장 해제')`), true, '저장 후 버튼이 "저장 해제"로 바뀌어야 함');
+    assert.equal(await click('서재'), true); await sleep(200);
+    assert.ok((await text()).includes('저장한 검색 결과 (1)'));
+    assert.equal(await click('삭제'), true); await sleep(150);
+    assert.equal((await state()).savedSearches.length, 0, '삭제하면 비어야 함');
+    assert.ok((await text()).includes('저장한 검색 결과 (0)'));
+  });
+
+  await ta('반응형 레이아웃: 홈에서만 home-wide가 켜지고 좌/우 영역이 나뉜다', async () => {
+    await reset();
+    assert.equal(await ev(`document.body.classList.contains('home-wide')`), true, '홈에서는 home-wide가 켜져야 함');
+    assert.ok(await ev(`!!document.querySelector('.home-side') && !!document.querySelector('.home-main')`), '좌/우 영역 컨테이너가 있어야 함');
+    assert.ok(await ev(`document.querySelector('.home-side').textContent.includes('범위 설정')`), '범위 설정은 왼쪽 영역에 있어야 함');
+    assert.ok(await ev(`document.querySelector('.home-main').textContent.includes('이번 주 기록')`), '기록은 오른쪽 영역에 있어야 함');
+    assert.equal(await click('설정'), true); await sleep(150);
+    assert.equal(await ev(`document.body.classList.contains('home-wide')`), false, '다른 화면에서는 home-wide가 꺼져야 함');
   });
 
   await ta('390px 폭에서 가로 스크롤이 생기지 않는다', async () => {

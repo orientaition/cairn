@@ -32,6 +32,15 @@ html[data-fs="2"]{--fs:24px}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6;-webkit-text-size-adjust:100%}
 body{min-height:100vh;min-height:100dvh}
 .app{max-width:480px;margin:0 auto;padding:12px 16px 48px}
+/* 넓은 화면(PC)에서는 홈 화면만 2단으로 — 범위 설정·오늘의 논문을 왼쪽에, 기록·노트를 오른쪽에 둬서
+   양옆이 비지 않게 한다. 읽기·퀴즈 등 다른 화면은 줄 길이를 지키려고 그대로 좁게 둔다. */
+.home-main{margin-top:18px;border-top:1px solid var(--line);padding-top:14px}
+@media (min-width:900px){
+  body.home-wide .app{max-width:1080px}
+  body.home-wide #view{display:grid;grid-template-columns:380px 1fr;gap:32px;align-items:start}
+  body.home-wide .home-side{position:sticky;top:12px}
+  body.home-wide .home-main{margin-top:0;border-top:0;padding-top:0}
+}
 button{font:inherit;color:inherit;cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
@@ -359,15 +368,16 @@ function mergeState(a,b){
     const ex=reviewMap.get(r.id);
     if(!ex||r.box>ex.box||(r.box===ex.box&&r.due>ex.due)) reviewMap.set(r.id,r);
   }
-  // 테마·소리·알림 같은 "이 기기" 설정은 건드리지 않는다 — 진행 기록 7개 필드만 합친다
+  const savedSearches=[...new Map([...(a.savedSearches||[]),...(b.savedSearches||[])].map(x=>[x.id,x])).values()];
+  // 테마·소리·알림 같은 "이 기기" 설정은 건드리지 않는다 — 진행 기록 필드만 합친다
   return {xp:Math.max(Number(a.xp)||0,Number(b.xp)||0),days,done,notes,
-    fav:uniq('fav'),later:uniq('later'),history,review:[...reviewMap.values()]};
+    fav:uniq('fav'),later:uniq('later'),history,review:[...reviewMap.values()],savedSearches};
 }
 
 const DEFAULTS={v:2,xp:0,days:[],done:{},notes:[],sound:false,theme:'light',fs:1,
   field:'all',tags:[],mode:'read',len:5,goal:5,difficulty:'ko',onboarded:false,resume:null,
   fav:[],later:[],history:[],day:{k:'',sent:0},review:[],ext:{},
-  notifyOn:false,notifyTime:'20:00',notifiedDate:'',measure:false,analytics:[],keyword:''};
+  notifyOn:false,notifyTime:'20:00',notifiedDate:'',measure:false,analytics:[],keyword:'',savedSearches:[]};
 
 /* v1(paperbite.v1) → v2. 기존 기록이 사라지지 않게 한다. */
 function migrate(raw){
@@ -741,7 +751,7 @@ function clearResume(){ if(S.resume){ S.resume=null; saveState(); } }
    VIEWS
    ===================================================================== */
 const view=$('#view');
-function mount(...nodes){ clearTimers(); view.replaceChildren(...nodes.flat().filter(Boolean)); window.scrollTo(0,0); }
+function mount(...nodes){ clearTimers(); document.body.classList.remove('home-wide'); view.replaceChildren(...nodes.flat().filter(Boolean)); window.scrollTo(0,0); }
 
 function renderTop(){
   const g=goalLen();
@@ -858,63 +868,66 @@ function viewHome(){
   const due=dueReviewItems();
 
   mount(
-    due.length?h('div',{class:'card'},
-        h('div',{class:'row between'},
-          h('div',null,h('div',{class:'label'},'복습'),h('div',{class:'small muted'},`틀렸던 문제 ${due.length}개가 기다리고 있어요.`)),
-          h('button',{class:'btn sm',on:{click:startReview}},'복습하기'))):null,
-    r?h('div',{class:'card'},
-        h('div',{class:'label'},'이어서 읽기'),
-        h('div',{class:'h2',style:'font-size:16px'},byId(r.pid).title),
-        h('div',{class:'small muted'},`${r.i+1}번째 문장부터 · ${r.len}문장 · ${r.mode==='time'?'타임어택':'편하게'}`),
-        h('div',{class:'stack',style:'margin-top:10px'},
-          h('button',{class:'btn primary',on:{click:resumeRead}},'이어서 읽기'),
-          h('button',{class:'btn quiet',on:{click:()=>{clearResume();viewHome();}}},'기록 지우고 새로 시작'))):null,
-    h('div',{class:'label'},'오늘의 논문'),
-    p?paperCard(p):h('div',{class:'card'},h('div',{class:'h2'},'조건에 맞는 논문이 없어요'),h('div',{class:'small muted'},'검색어나 분야·세부 분야 범위를 넓혀 보세요.')),
-    (r||!p)?null:h('button',{class:'btn primary',on:{click:()=>startPaper(p)}},S.mode==='time'?`${timeLimit(sessionLen(p))}초 안에 ${sessionLen(p)}문장 읽기`:`${sessionLen(p)}문장 읽기 시작`),
-    h('div',{class:'linkrow'},
-      p?h('button',{on:{click:()=>{home.offset++;viewHome();}}},'다른 논문'):null,
-      S.keyword?h('button',{on:{click:()=>{S.keyword='';saveState();viewHome();}}},'검색 지우기'):null,
-      h('button',{on:{click:viewPaste}},'내 논문 붙여넣기'),
-      h('button',{on:{click:viewWebSearch}},'웹에서 논문 찾기')),
+    h('div',{class:'home-side'},
+      due.length?h('div',{class:'card'},
+          h('div',{class:'row between'},
+            h('div',null,h('div',{class:'label'},'복습'),h('div',{class:'small muted'},`틀렸던 문제 ${due.length}개가 기다리고 있어요.`)),
+            h('button',{class:'btn sm',on:{click:startReview}},'복습하기'))):null,
+      r?h('div',{class:'card'},
+          h('div',{class:'label'},'이어서 읽기'),
+          h('div',{class:'h2',style:'font-size:16px'},byId(r.pid).title),
+          h('div',{class:'small muted'},`${r.i+1}번째 문장부터 · ${r.len}문장 · ${r.mode==='time'?'타임어택':'편하게'}`),
+          h('div',{class:'stack',style:'margin-top:10px'},
+            h('button',{class:'btn primary',on:{click:resumeRead}},'이어서 읽기'),
+            h('button',{class:'btn quiet',on:{click:()=>{clearResume();viewHome();}}},'기록 지우고 새로 시작'))):null,
+      h('div',{class:'label'},'오늘의 논문'),
+      p?paperCard(p):h('div',{class:'card'},h('div',{class:'h2'},'조건에 맞는 논문이 없어요'),h('div',{class:'small muted'},'검색어나 분야·세부 분야 범위를 넓혀 보세요.')),
+      (r||!p)?null:h('button',{class:'btn primary',on:{click:()=>startPaper(p)}},S.mode==='time'?`${timeLimit(sessionLen(p))}초 안에 ${sessionLen(p)}문장 읽기`:`${sessionLen(p)}문장 읽기 시작`),
+      h('div',{class:'linkrow'},
+        p?h('button',{on:{click:()=>{home.offset++;viewHome();}}},'다른 논문'):null,
+        S.keyword?h('button',{on:{click:()=>{S.keyword='';saveState();viewHome();}}},'검색 지우기'):null,
+        h('button',{on:{click:viewPaste}},'내 논문 붙여넣기'),
+        h('button',{on:{click:viewWebSearch}},'웹에서 논문 찾기')),
 
-    h('details',{class:'scope',style:'margin-top:14px',open:home.scopeOpen===true,on:{toggle:e=>{home.scopeOpen=e.target.open;}}},
-      h('summary',null,'범위 설정 ',h('span',{class:'sum'},'· '+summary)),
-      h('div',{class:'scopebody'},
-        h('fieldset',{class:'fieldset'},h('legend',null,'분야'),h('div',{class:'chips'},chip('all','전체'),chip('sci','이공'),chip('soc','사회·심리'),chip('hum','인문'))),
-        h('fieldset',{class:'fieldset'},h('legend',null,'세부 분야 (여러 개 선택 가능)'),
-          h('div',{class:'chips'},
-            h('button',{class:'chip s','aria-pressed':String(act.length===0),on:{click:()=>{S.tags=[];home.offset=0;saveState();viewHome();}}},'전체'),
-            tl.map(([t,n])=>tagChip(t,n))),
-          h('div',{class:'small muted',style:'margin-top:6px'},`조건에 맞는 논문 ${pool().length}편`)),
-        h('fieldset',{class:'fieldset'},h('legend',null,'키워드 검색'),
-          h('input',{type:'search',placeholder:'제목·출처·태그로 찾고 Enter',value:S.keyword||'','aria-label':'논문 키워드 검색',on:{change:e=>{S.keyword=e.target.value;home.offset=0;saveState();viewHome();}}}),
-          h('div',{class:'small muted',style:'margin-top:4px'},`조건에 맞는 논문 ${pool().length}편`)),
-        h('fieldset',{class:'fieldset'},h('legend',null,'모드'),h('div',{class:'chips'},modeChip('read','편하게'),modeChip('time','타임어택'))),
-        h('fieldset',{class:'fieldset'},h('legend',null,'읽기 길이'),h('div',{class:'chips'},LENS.map(lenChip)),
-          h('div',{class:'small muted',style:'margin-top:6px'},'1문장만 읽어도 오늘 기록으로 남아요.')),
-        h('fieldset',{class:'fieldset',style:'margin-bottom:0'},h('legend',null,'난이도'),h('div',{class:'chips'},diffChip('ko','한국어 요약'),diffChip('en','영어 초록'),diffChip('intro','서론 일부(CC BY·CC0)')),
-          h('div',{class:'small muted',style:'margin-top:6px'},'자료가 없는 논문은 자동으로 한국어 요약을 보여줘요.')))),
+      h('details',{class:'scope',style:'margin-top:14px',open:home.scopeOpen===true,on:{toggle:e=>{home.scopeOpen=e.target.open;}}},
+        h('summary',null,'범위 설정 ',h('span',{class:'sum'},'· '+summary)),
+        h('div',{class:'scopebody'},
+          h('fieldset',{class:'fieldset'},h('legend',null,'분야'),h('div',{class:'chips'},chip('all','전체'),chip('sci','이공'),chip('soc','사회·심리'),chip('hum','인문'))),
+          h('fieldset',{class:'fieldset'},h('legend',null,'세부 분야 (여러 개 선택 가능)'),
+            h('div',{class:'chips'},
+              h('button',{class:'chip s','aria-pressed':String(act.length===0),on:{click:()=>{S.tags=[];home.offset=0;saveState();viewHome();}}},'전체'),
+              tl.map(([t,n])=>tagChip(t,n))),
+            h('div',{class:'small muted',style:'margin-top:6px'},`조건에 맞는 논문 ${pool().length}편`)),
+          h('fieldset',{class:'fieldset'},h('legend',null,'키워드 검색'),
+            h('input',{type:'search',placeholder:'제목·출처·태그로 찾고 Enter',value:S.keyword||'','aria-label':'논문 키워드 검색',on:{change:e=>{S.keyword=e.target.value;home.offset=0;saveState();viewHome();}}}),
+            h('div',{class:'small muted',style:'margin-top:4px'},`조건에 맞는 논문 ${pool().length}편`)),
+          h('fieldset',{class:'fieldset'},h('legend',null,'모드'),h('div',{class:'chips'},modeChip('read','편하게'),modeChip('time','타임어택'))),
+          h('fieldset',{class:'fieldset'},h('legend',null,'읽기 길이'),h('div',{class:'chips'},LENS.map(lenChip)),
+            h('div',{class:'small muted',style:'margin-top:6px'},'1문장만 읽어도 오늘 기록으로 남아요.')),
+          h('fieldset',{class:'fieldset',style:'margin-bottom:0'},h('legend',null,'난이도'),h('div',{class:'chips'},diffChip('ko','한국어 요약'),diffChip('en','영어 초록'),diffChip('intro','서론 일부(CC BY·CC0)')),
+            h('div',{class:'small muted',style:'margin-top:6px'},'자료가 없는 논문은 자동으로 한국어 요약을 보여줘요.'))))
+    ),
+    h('div',{class:'home-main'},
+      h('div',{class:'label'},'이번 주 기록'),
+      h('table',{class:'week'},
+        h('thead',null,h('tr',null,week.map(d=>h('th',{class:d.today?'today':'',scope:'col'},d.label)))),
+        h('tbody',null,h('tr',null,week.map(d=>{ const on=S.days.includes(d.key); return h('td',{class:on?'on':'muted','aria-label':d.label+(on?' 읽음':' 기록 없음')},on?'✓':'·'); })))),
+      h('div',{class:'small muted',style:'margin-top:6px'},`Lv.${L.lv} · ${L.cur}/${L.need}점 · 쉬어도 누적 기록은 사라지지 않아요.`),
+      h('div',{class:'bar'},h('i',{style:`width:${L.cur/L.need*100}%`})),
 
-    h('hr',{class:'sep'}),
-    h('div',{class:'label'},'이번 주 기록'),
-    h('table',{class:'week'},
-      h('thead',null,h('tr',null,week.map(d=>h('th',{class:d.today?'today':'',scope:'col'},d.label)))),
-      h('tbody',null,h('tr',null,week.map(d=>{ const on=S.days.includes(d.key); return h('td',{class:on?'on':'muted','aria-label':d.label+(on?' 읽음':' 기록 없음')},on?'✓':'·'); })))),
-    h('div',{class:'small muted',style:'margin-top:6px'},`Lv.${L.lv} · ${L.cur}/${L.need}점 · 쉬어도 누적 기록은 사라지지 않아요.`),
-    h('div',{class:'bar'},h('i',{style:`width:${L.cur/L.need*100}%`})),
+      p?h('div',{class:'card',style:'margin-top:16px'},
+        h('div',{class:'label',style:'margin-bottom:4px'},'오늘 이 논문'),
+        mission('read','문장 읽기',10*sessionLen(p)+lenBonus(sessionLen(p))),mission('quiz','퀴즈 풀기',70),mission('note','한 줄 정리',20)):null,
 
-    p?h('div',{class:'card',style:'margin-top:16px'},
-      h('div',{class:'label',style:'margin-bottom:4px'},'오늘 이 논문'),
-      mission('read','문장 읽기',10*sessionLen(p)+lenBonus(sessionLen(p))),mission('quiz','퀴즈 풀기',70),mission('note','한 줄 정리',20)):null,
+      notes.length?h('div',{class:'card'},h('div',{class:'label',style:'margin-bottom:6px'},`내 노트 (${S.notes.length})`),
+        notes.map(n=>h('div',{style:'padding:6px 0;border-top:1px solid var(--line)'},h('div',{class:'small muted'},n.date+' · '+n.title),h('div',{class:'small'},n.text))),
+        h('div',{class:'linkrow'},h('button',{on:{click:viewLibrary}},'서재에서 전체 보기'))):null,
 
-    notes.length?h('div',{class:'card'},h('div',{class:'label',style:'margin-bottom:6px'},`내 노트 (${S.notes.length})`),
-      notes.map(n=>h('div',{style:'padding:6px 0;border-top:1px solid var(--line)'},h('div',{class:'small muted'},n.date+' · '+n.title),h('div',{class:'small'},n.text))),
-      h('div',{class:'linkrow'},h('button',{on:{click:viewLibrary}},'서재에서 전체 보기'))):null,
-
-    h('details',{class:'about'},h('summary',null,'이 앱에 대해'),
-      h('p',{class:'small muted'},'이 샘플의 문장은 각 초록을 바탕으로 쉬운 한국어로 새로 쓴 요약이에요(원문 아님). 영어 원문 병기는 수집기가 초록을 채운 논문에서만 보입니다. 라이선스 배지는 가공 가능 여부 표시이고, 원문은 링크에서 확인하세요. 기록은 이 브라우저에만 저장됩니다.'))
+      h('details',{class:'about'},h('summary',null,'이 앱에 대해'),
+        h('p',{class:'small muted'},'이 샘플의 문장은 각 초록을 바탕으로 쉬운 한국어로 새로 쓴 요약이에요(원문 아님). 영어 원문 병기는 수집기가 초록을 채운 논문에서만 보입니다. 라이선스 배지는 가공 가능 여부 표시이고, 원문은 링크에서 확인하세요. 기록은 이 브라우저에만 저장됩니다.'))
+    )
   );
+  document.body.classList.add('home-wide'); // 넓은 화면에서만 CSS가 2단으로 바꾼다(좁으면 그냥 위아래로 쌓임)
 }
 
 /* ---------- 설정 ---------- */
@@ -1006,6 +1019,24 @@ function viewLibrary(){
           p.url?h('a',{href:p.url,target:'_blank',rel:'noopener noreferrer'},'원문 ↗'):null))):h('div',{class:'small muted'},empty));
   };
   const hist=[...new Set((S.history||[]).map(x=>x.pid))];
+  const savedSearches=S.savedSearches||[];
+  const savedSearchSection=h('div',{style:'margin-bottom:18px'},
+    h('div',{class:'label',style:'margin-bottom:6px'},`저장한 검색 결과 (${savedSearches.length})`),
+    h('div',{class:'small muted',style:'margin-bottom:6px'},'웹에서 찾은 원문이에요. 라이선스 확인 전이라 이 기기에만 저장되고, 서로 다른 사용자와 공유되지 않아요.'),
+    savedSearches.length?savedSearches.map(r=>{
+      const readable=splitSentences(r.abstract||'').length>=3;
+      return h('div',{class:'card',style:'padding:12px'},
+        h('div',{class:'row',style:'gap:6px'},h('span',{class:'badge'},r.source)),
+        h('div',{class:'h2',style:'font-size:16px;margin:4px 0'},r.title),
+        h('div',{class:'cite'},[r.authors||'저자 미확인',r.date||'연도 미확인'].join(' · ')),
+        h('div',{class:'linkrow'},
+          readable?h('button',{on:{click:()=>{
+            const paper=buildAlgoPaper({id:'live:'+r.id,source:r.source,title:r.title,authors:r.authors,date:r.date,url:r.url,text:r.abstract});
+            if(paper) startPaper(paper);
+          }}},'읽기 시작'):null,
+          h('button',{on:{click:()=>{ toggleSavedSearch(r); viewLibrary(); }}},'삭제'),
+          r.url?h('a',{href:r.url,target:'_blank',rel:'noopener noreferrer'},'원문 보기 ↗'):null));
+    }):h('div',{class:'small muted'},'아직 없어요. "웹에서 논문 찾기"에서 저장할 수 있어요.'));
   const searchBox=h('input',{type:'search',placeholder:'노트 검색 (논문 제목·내용)','aria-label':'노트 검색'});
   const notesPanel=h('div');
   function redrawNotes(){
@@ -1030,6 +1061,7 @@ function viewLibrary(){
     list('즐겨찾기',S.fav||[],'아직 없어요. 논문 카드에서 즐겨찾기를 누르면 모입니다.'),
     list('나중에 읽기',S.later||[],'아직 없어요.'),
     list('읽은 논문',hist,'아직 없어요.'),
+    savedSearchSection,
     h('div',{style:'margin-bottom:18px'},
       h('div',{class:'row between',style:'margin-bottom:6px'},h('div',{class:'label'},`내 노트 (${S.notes.length})`),exportBtn),
       searchBox, notesPanel),
@@ -1348,8 +1380,18 @@ async function searchProxied(source,term,limit){
   if(!res.ok||!j||j.error) throw new Error((j&&j.error)||('프록시 '+res.status));
   return j.results||[];
 }
+function toggleSavedSearch(r){
+  const list=S.savedSearches||[];
+  const i=list.findIndex(x=>x.id===r.id);
+  if(i>=0) list.splice(i,1);
+  else list.unshift({id:r.id,title:r.title,authors:r.authors,date:r.date,url:r.url,source:r.source,abstract:r.abstract||''});
+  S.savedSearches=list.slice(0,60);
+  saveState();
+  return i<0; // true면 방금 저장된 것
+}
 function webResultCard(r){
   const readable=splitSentences(r.abstract||'').length>=3;
+  const saved=(S.savedSearches||[]).some(x=>x.id===r.id);
   return h('div',{class:'card'},
     h('div',{class:'row',style:'gap:6px'},h('span',{class:'badge'},r.source)),
     h('div',{class:'h2'},r.title),
@@ -1363,6 +1405,10 @@ function webResultCard(r){
         const paper=buildAlgoPaper({id:'live:'+r.id,source:r.source,title:r.title,authors:r.authors,date:r.date,url:r.url,text:r.abstract});
         if(paper) startPaper(paper);
       }}},'읽기 시작'):null,
+      h('button',{'aria-pressed':String(saved),on:{click:e=>{
+        const nowSaved=toggleSavedSearch(r);
+        e.target.textContent=nowSaved?'저장 해제':'저장'; e.target.setAttribute('aria-pressed',String(nowSaved));
+      }}},saved?'저장 해제':'저장'),
       r.url?h('a',{href:r.url,target:'_blank',rel:'noopener noreferrer'},'원문 보기 ↗'):null)
   );
 }
