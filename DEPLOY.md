@@ -25,14 +25,15 @@ node deploy/build.mjs
 
 1. 이 폴더를 GitHub 저장소로 올려요(`git init && git add -A && git commit && git push`).
 2. 저장소 **Settings → Pages → Build and deployment → Source**를 **GitHub Actions**로 설정해요.
-3. `.github/workflows/deploy.yml`은 **수동 실행 전용**이에요(비공개 저장소에서 push마다 자동으로
-   돌면 계속 실패만 하니까요). 준비되면 저장소 **Actions 탭 → 배포 (GitHub Pages) → Run workflow**를
-   눌러 수동으로 돌리세요. `node deploy/build.mjs`로 `dist/`를 만들어 배포하고, 몇 분 뒤 Pages가
-   알려주는 주소(`https://<계정>.github.io/<저장소>/`)로 들어가면 돼요.
+3. `.github/workflows/deploy.yml`은 **`main`에 푸시할 때마다 자동으로** `node deploy/build.mjs`로
+   `dist/`를 만들어 배포해요. 저장소 **Actions 탭 → 배포 (GitHub Pages) → Run workflow**로 수동
+   실행도 가능해요. 몇 분 뒤 Pages가 알려주는 주소(`https://<계정>.github.io/<저장소>/`)로
+   들어가면 돼요. (저장소가 비공개일 땐 무료 플랜에서 이 배포가 전부 실패하니, 그 경우엔
+   `on: push` 트리거를 지우고 수동 실행만 쓰거나 공개로 바꾸세요.)
 4. 수집기를 자동으로 매일 돌리고 싶으면 `.github/workflows/collect-papers.yml`을 그대로 두세요
    — 하루 1회 arXiv·OpenAlex·OSF(+ 키가 있으면 CORE)를 모으고, `ANTHROPIC_API_KEY`가 있으면
-   AI 변환까지 마친 뒤 `papers.json`을 커밋해요(이건 지금도 자동으로 돌아요). 사이트에 반영하려면
-   그 다음에 3번의 배포를 한 번 더 수동 실행하면 돼요.
+   AI 변환까지 마친 뒤 `papers.json`을 `main`에 커밋해요. 그 커밋도 결국 `main`에 대한 push라서
+   3번의 배포가 자동으로 이어 돌아요 — 수집부터 배포까지 완전히 자동이에요.
    - 시크릿 등록: 저장소 **Settings → Secrets and variables → Actions**에서
      `CORE_API_KEY`(core.ac.uk에서 무료 발급, 선택), `ANTHROPIC_API_KEY`(선택, 없으면
      수집만 되고 변환은 다음 기회로 보류돼요)를 추가하세요.
