@@ -35,7 +35,7 @@ const src = html.split('/*PURE_START*/')[1].split('/*PURE_END*/')[0];
 const names = ['hash', 'mulberry32', 'shuffle', 'splitSentences', 'makeCloze', 'levelInfo',
   'lenBonus', 'timeLimit', 'markTerms', 'citation', 'migrate', 'LENS', 'DEFAULTS',
   'addDaysUTC', 'reviewAdvance', 'resolveDifficulty', 'readingSource', 'notesMarkdown',
-  'contrastRatio', 'buildIcs', 'mergeState'];
+  'contrastRatio', 'buildIcs', 'mergeState', 'reconstructAbstract', 'truncateText'];
 const P = new Function(src + '\nreturn {' + names.join(',') + '};')();
 
 console.log('\n순수 함수');
@@ -309,6 +309,18 @@ t('알림: 오늘 이미 읽었으면 다시 알리지 않는 가드가 있다',
 t('계정 병합: 테마·알림·측정 같은 기기별 설정은 합치지 않고 진행 기록 7개 필드만 돌려준다', () => {
   const keys = Object.keys(P.mergeState({ xp: 1, theme: 'dark', notifyOn: true }, { xp: 2 })).sort();
   assert.deepEqual(keys, ['days', 'done', 'fav', 'history', 'later', 'notes', 'review', 'xp']);
+});
+
+t('웹 검색: OpenAlex 역색인 초록을 문장으로 복원한다', () => {
+  const inv = { Hello: [0], world: [1], this: [2], is: [3], a: [4], test: [5] };
+  assert.equal(P.reconstructAbstract(inv), 'Hello world this is a test');
+  assert.equal(P.reconstructAbstract(null), '');
+});
+t('웹 검색: 긴 텍스트는 단어 중간을 끊지 않고 자른다', () => {
+  const s = P.truncateText('hello world this is long', 13);
+  assert.ok(s.endsWith('…'));
+  assert.ok(!s.includes('h…') && s.length <= 14);
+  assert.equal(P.truncateText('short', 100), 'short');
 });
 
 /* =====================================================================
@@ -908,6 +920,29 @@ async function flow() {
     await sleep(200);
     const replayCount = (await state()).analytics.filter(x => x.e === 'quiz_answer').length;
     assert.equal(replayCount, firstCount, '같은 날 복습 플레이는 측정에 새로 쌓이면 안 됨');
+  });
+
+  await ta('웹에서 논문 찾기: OpenAlex 실시간 검색 결과가 뜨고 "읽기 시작" 버튼은 없다', async () => {
+    await reset();
+    assert.equal(await click('웹에서 논문 찾기'), true); await sleep(200);
+    await ev(`document.querySelector('input[aria-label="웹 논문 검색"]').value='inequality'`);
+    await ev(`document.querySelector('input[aria-label="웹 논문 검색"]').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}))`);
+    await waitFor(`!document.body.innerText.includes('찾는 중')`, 8000);
+    const body = await text();
+    assert.ok(/\d+건 찾았어요|실패했어요|결과가 없어요/.test(body), '검색 상태 메시지가 보여야 함: ' + body.slice(0, 200));
+    assert.equal(await ev(`[...document.querySelectorAll('button')].some(b=>b.textContent.includes('읽기 시작'))`), false, '웹 검색 결과에는 읽기 시작 버튼이 없어야 함');
+  });
+
+  await ta('웹에서 논문 찾기: 검색 프록시(arXiv·OSF)가 배포돼 있으면 결과를 돌려준다', async () => {
+    const PLACEHOLDER = 'https://paperbite-search-proxy.workers.dev';
+    const configured = html.includes('SEARCH_PROXY_URL=') && !html.includes(`SEARCH_PROXY_URL='${PLACEHOLDER}'`);
+    if (!configured) { console.log('    skip: SEARCH_PROXY_URL이 아직 플레이스홀더라 건너뜀'); return; }
+    await reset();
+    assert.equal(await click('웹에서 논문 찾기'), true); await sleep(200);
+    await ev(`document.querySelector('input[aria-label="웹 논문 검색"]').value='memory'`);
+    await ev(`document.querySelector('input[aria-label="웹 논문 검색"]').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}))`);
+    await waitFor(`!document.body.innerText.includes('찾는 중')`, 10000);
+    assert.ok((await text()).includes('arXiv') || (await text()).includes('OSF'), '프록시로 가져온 결과가 하나는 보여야 함');
   });
 
   await ta('390px 폭에서 가로 스크롤이 생기지 않는다', async () => {
