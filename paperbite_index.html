@@ -1325,7 +1325,7 @@ function viewResult(){
    arXiv·OSF는 CORS가 없어 작은 프록시(worker/search-proxy.js, Cloudflare Workers)를 거친다.
    결과는 AI 변환·라이선스 게이트를 거치지 않은 원문 그대로라서 "읽기 시작" 없이
    제목·저자·초록 일부·원문 링크만 보여준다. */
-const SEARCH_PROXY_URL='https://paperbite-search-proxy.workers.dev'; // 배포 후 실제 주소로 교체
+const SEARCH_PROXY_URL='https://cairn.rladlrrua12.workers.dev';
 async function searchOpenAlexLive(term,limit){
   const url=`https://api.openalex.org/works?filter=title.search:${encodeURIComponent(term)}&per-page=${limit}`;
   const res=await fetch(url);
