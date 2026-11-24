@@ -19,15 +19,20 @@ node deploy/build.mjs
 
 ## 1) GitHub Pages (추천 — 수집기 자동화와 같은 저장소에서 끝남)
 
+**주의**: GitHub Pages는 **무료 플랜의 비공개 저장소에서는 켤 수 없어요**(Pro 이상 필요).
+저장소가 비공개라면 먼저 **Settings → General → Danger Zone → Change visibility → Public**으로
+바꾸거나 Pro로 올려야 아래 단계가 동작해요.
+
 1. 이 폴더를 GitHub 저장소로 올려요(`git init && git add -A && git commit && git push`).
 2. 저장소 **Settings → Pages → Build and deployment → Source**를 **GitHub Actions**로 설정해요.
-3. 이미 들어 있는 `.github/workflows/deploy.yml`이 `main`에 푸시할 때마다
-   `node deploy/build.mjs`로 `dist/`를 만들어 자동 배포해요. 몇 분 뒤 Pages가 알려주는
-   주소(`https://<계정>.github.io/<저장소>/`)로 들어가면 돼요.
+3. `.github/workflows/deploy.yml`은 **수동 실행 전용**이에요(비공개 저장소에서 push마다 자동으로
+   돌면 계속 실패만 하니까요). 준비되면 저장소 **Actions 탭 → 배포 (GitHub Pages) → Run workflow**를
+   눌러 수동으로 돌리세요. `node deploy/build.mjs`로 `dist/`를 만들어 배포하고, 몇 분 뒤 Pages가
+   알려주는 주소(`https://<계정>.github.io/<저장소>/`)로 들어가면 돼요.
 4. 수집기를 자동으로 매일 돌리고 싶으면 `.github/workflows/collect-papers.yml`을 그대로 두세요
    — 하루 1회 arXiv·OpenAlex·OSF(+ 키가 있으면 CORE)를 모으고, `ANTHROPIC_API_KEY`가 있으면
-   AI 변환까지 마친 뒤 `papers.json`을 커밋해요. 그 커밋이 `main`에 반영되면 `deploy.yml`이
-   다시 돌아 사이트가 새 논문과 함께 자동으로 갱신돼요.
+   AI 변환까지 마친 뒤 `papers.json`을 커밋해요(이건 지금도 자동으로 돌아요). 사이트에 반영하려면
+   그 다음에 3번의 배포를 한 번 더 수동 실행하면 돼요.
    - 시크릿 등록: 저장소 **Settings → Secrets and variables → Actions**에서
      `CORE_API_KEY`(core.ac.uk에서 무료 발급, 선택), `ANTHROPIC_API_KEY`(선택, 없으면
      수집만 되고 변환은 다음 기회로 보류돼요)를 추가하세요.
