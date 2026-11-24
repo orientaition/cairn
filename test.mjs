@@ -922,7 +922,7 @@ async function flow() {
     assert.equal(replayCount, firstCount, '같은 날 복습 플레이는 측정에 새로 쌓이면 안 됨');
   });
 
-  await ta('웹에서 논문 찾기: OpenAlex 실시간 검색 결과가 뜨고 "읽기 시작" 버튼은 없다', async () => {
+  await ta('웹에서 논문 찾기: OpenAlex 실시간 검색 결과가 뜬다', async () => {
     await reset();
     assert.equal(await click('웹에서 논문 찾기'), true); await sleep(200);
     await ev(`document.querySelector('input[aria-label="웹 논문 검색"]').value='inequality'`);
@@ -930,7 +930,24 @@ async function flow() {
     await waitFor(`!document.body.innerText.includes('찾는 중')`, 8000);
     const body = await text();
     assert.ok(/\d+건 찾았어요|실패했어요|결과가 없어요/.test(body), '검색 상태 메시지가 보여야 함: ' + body.slice(0, 200));
-    assert.equal(await ev(`[...document.querySelectorAll('button')].some(b=>b.textContent.includes('읽기 시작'))`), false, '웹 검색 결과에는 읽기 시작 버튼이 없어야 함');
+  });
+
+  await ta('웹 검색 결과: 초록이 충분하면 "읽기 시작"으로 원문+빈칸 퀴즈를 바로 읽을 수 있다(AI 아님, 저장 안 됨)', async () => {
+    await reset();
+    assert.equal(await click('웹에서 논문 찾기'), true); await sleep(200);
+    await ev(`document.querySelector('input[aria-label="웹 논문 검색"]').value='inequality'`);
+    await ev(`document.querySelector('input[aria-label="웹 논문 검색"]').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}))`);
+    await waitFor(`!document.body.innerText.includes('찾는 중')`, 8000);
+    const hasReadBtn = await ev(`[...document.querySelectorAll('button')].some(b=>b.textContent.includes('읽기 시작'))`);
+    assert.ok(hasReadBtn, '초록이 있는 OpenAlex 결과 중 하나는 읽기 시작 버튼이 있어야 함');
+    await ev(`[...document.querySelectorAll('button')].find(b=>b.textContent.includes('읽기 시작')).click()`); await sleep(200);
+    assert.ok((await text()).includes('문장 1 /'), '읽기 화면으로 들어가야 함');
+    assert.equal(await ev(`document.querySelector('.sent').lang`), 'en', '원문 그대로(영어)라 en으로 표시돼야 함');
+    await readSentences(5);
+    await click('퀴즈 풀기'); await sleep(200);
+    assert.ok((await text()).includes('빈칸에 들어갈 말은') || (await text()).includes('퀴즈'), '알고리즘 빈칸 퀴즈가 떠야 함');
+    const s = await state();
+    assert.equal((s.history || []).some(x => x.pid && x.pid.startsWith('live:')), false, '검색 결과로 읽은 건 서재(history)에 저장되면 안 됨');
   });
 
   await ta('웹에서 논문 찾기: 검색 프록시(arXiv·OSF)가 배포돼 있으면 결과를 돌려준다', async () => {

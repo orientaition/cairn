@@ -1349,13 +1349,21 @@ async function searchProxied(source,term,limit){
   return j.results||[];
 }
 function webResultCard(r){
+  const readable=splitSentences(r.abstract||'').length>=3;
   return h('div',{class:'card'},
     h('div',{class:'row',style:'gap:6px'},h('span',{class:'badge'},r.source)),
     h('div',{class:'h2'},r.title),
     h('div',{class:'cite'},[r.authors||'저자 미확인',r.date||'연도 미확인'].join(' · ')),
     r.abstract?h('div',{class:'small muted',style:'margin-top:6px'},truncateText(r.abstract,220)):null,
-    h('div',{class:'small muted',style:'margin-top:6px'},'AI 변환·라이선스 확인 전 원문이에요. 바로 읽기는 지원하지 않아요.'),
-    r.url?h('div',{class:'linkrow'},h('a',{href:r.url,target:'_blank',rel:'noopener noreferrer'},'원문 보기 ↗')):null
+    h('div',{class:'small muted',style:'margin-top:6px'},
+      readable?'AI 요약이 아니라 원문 문장을 그대로 잘라 읽어요. 퀴즈는 빈칸 채우기로 자동 생성돼요.'
+        :'초록이 없거나 너무 짧아서 바로 읽기는 지원하지 않아요.'),
+    h('div',{class:'linkrow'},
+      readable?h('button',{on:{click:()=>{
+        const paper=buildAlgoPaper({id:'live:'+r.id,source:r.source,title:r.title,authors:r.authors,date:r.date,url:r.url,text:r.abstract});
+        if(paper) startPaper(paper);
+      }}},'읽기 시작'):null,
+      r.url?h('a',{href:r.url,target:'_blank',rel:'noopener noreferrer'},'원문 보기 ↗'):null)
   );
 }
 function viewWebSearch(){
@@ -1384,12 +1392,29 @@ function viewWebSearch(){
     h('div',{class:'card'},
       h('div',{class:'label'},'웹에서 논문 찾기'),
       h('div',{class:'h2'},'arXiv·OSF·OpenAlex를 실시간으로 검색해요'),
-      h('div',{class:'small muted',style:'margin-bottom:8px'},'여기서 찾은 논문은 AI 요약이나 라이선스 확인을 거치지 않은 원문이에요. 제목·초록만 보여주고, 읽으려면 원문 링크로 가야 해요.'),
+      h('div',{class:'small muted',style:'margin-bottom:8px'},'라이선스 확인 전 원문이라 저장은 안 돼요. 초록이 충분히 길면 "읽기 시작"으로 원문 문장과 자동 빈칸 퀴즈를 바로 볼 수 있어요(AI 번역·요약은 아니에요).'),
       input, status),
     results,
     h('button',{class:'btn quiet',on:{click:goHome}},'돌아가기')
   );
   input.focus();
+}
+
+/* 붙여넣기·웹 검색 결과 공통: AI 없이 알고리즘만으로 "읽을거리"를 만든다.
+   요약은 번역·쉬운 말 바꾸기가 아니라 원문 문장을 그대로 잘라 쓰는 것이고(이해가 필요한 작업은
+   알고리즘으로 못 한다), 퀴즈는 핵심 단어를 가리는 빈칸 퀴즈(makeCloze)로 자동 생성한다.
+   저장하지 않는다(field:'paste'라 history·서재에 남지 않음 — finishRead()의 기존 분기 그대로 탄다). */
+function buildAlgoPaper(opts){
+  const sents=splitSentences(opts.text);
+  if(sents.length<3) return null;
+  const use=sents.slice(0,Math.max(S.len,5));
+  const id=opts.id||('paste:'+hash(use.join('|')));
+  return {
+    id, field:'paste', source:opts.source||'직접 붙여넣기',
+    title:opts.title||(use[0].length>60?use[0].slice(0,58)+'…':use[0]),
+    authors:opts.authors||null, date:opts.date||null, lic:'unk', url:opts.url||null,
+    sents:use, terms:[], cloze:makeCloze(use,hash(id)),
+  };
 }
 
 function viewPaste(){
@@ -1401,10 +1426,8 @@ function viewPaste(){
       h('div',{class:'small muted',style:'margin-bottom:8px'},'개인 학습용입니다. 붙여넣은 글은 저장하지 않고 이 화면에서만 씁니다.'),ta,msg),
     h('div',{class:'stack'},
       h('button',{class:'btn primary',on:{click:()=>{
-        const sents=splitSentences(ta.value);
-        if(sents.length<3){ msg.textContent='문장이 3개 이상 필요해요. 초록 전체를 붙여넣어 주세요.'; return; }
-        const use=sents.slice(0,Math.max(S.len,5)), id='paste:'+hash(use.join('|'));
-        const paper={id,field:'paste',source:'직접 붙여넣기',title:use[0].length>60?use[0].slice(0,58)+'…':use[0],authors:null,date:null,lic:'unk',url:null,sents:use,terms:[],cloze:makeCloze(use,hash(id))};
+        const paper=buildAlgoPaper({text:ta.value});
+        if(!paper){ msg.textContent='문장이 3개 이상 필요해요. 초록 전체를 붙여넣어 주세요.'; return; }
         startPaper(paper);
       }}},'읽기 시작'),
       h('button',{class:'btn quiet',on:{click:goHome}},'돌아가기'))
