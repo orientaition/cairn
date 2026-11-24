@@ -474,16 +474,16 @@ const byId=id=>PAPERS.find(p=>p.id===id)||null;
    변환(AI 요약·퀴즈)이 아직 안 됐거나(needsTransform) 라이선스상 저장 불가(canPersist:false)한
    항목은 아직 읽을거리가 없으므로 넣지 않는다. 파일이 없으면 그냥 조용히 넘어간다. */
 function mergeExternalPapers(list){
+  // 화면을 다시 그리지 않는다 — 부트스트랩에서 첫 viewHome() 전에 끝내 호출하므로,
+  // "오늘의 논문"이 이미 화면에 뜬 뒤 목록이 바뀌어 다른 논문으로 슬쩍 바뀌는 일이 없다.
   if(!Array.isArray(list)) return;
   const seen=new Set(PAPERS.map(p=>p.id));
-  let added=0;
   for(const p of list){
     if(!p||!p.id||seen.has(p.id)) continue;
     if(p.needsTransform||p.canPersist===false) continue;
     if(!Array.isArray(p.sents)||!p.sents.length) continue;
-    PAPERS.push(p); seen.add(p.id); added++;
+    PAPERS.push(p); seen.add(p.id);
   }
-  if(added&&!ses) viewHome(); // 읽는 중이 아니면 홈을 다시 그려 새 논문을 반영한다
 }
 
 /* =====================================================================
@@ -1342,15 +1342,25 @@ document.addEventListener('keydown',e=>{
   }
 });
 
-if(migrated) saveState();
-applyPrefs();
-renderTop();
-viewHome();
-track('app_open',{});
-fetch('./papers.json').then(r=>r.ok?r.json():null).then(mergeExternalPapers).catch(()=>{}); // 수집기 출력이 없으면 조용히 넘어간다
-maybeNotify();
-document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') maybeNotify(); });
-window.__pbTest=()=>ses; // test.mjs 전용 훅 — 현재 세션 상태를 읽기만 한다
+async function boot(){
+  if(migrated) saveState();
+  applyPrefs();
+  renderTop();
+  // 수집기 출력을 첫 viewHome() 전에 반영한다 — 그래야 "오늘의 논문"이 화면에 뜬 뒤
+  // 목록이 바뀌어 다른 논문으로 슬쩍 바뀌는 경쟁 상태가 생기지 않는다. 같은 출처 정적
+  // 파일이라 보통 즉시 끝나지만, 혹시 느려도 1.5초면 포기하고 내장 샘플로 진행한다.
+  try{
+    const timeout=new Promise(r=>setTimeout(()=>r(null),1500));
+    const res=await Promise.race([fetch('./papers.json').catch(()=>null),timeout]);
+    if(res&&res.ok) mergeExternalPapers(await res.json());
+  }catch(e){}
+  viewHome();
+  track('app_open',{});
+  maybeNotify();
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') maybeNotify(); });
+  window.__pbTest=()=>ses; // test.mjs 전용 훅 — 현재 세션 상태를 읽기만 한다
+}
+boot();
 })();
 </script>
 </body>

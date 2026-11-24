@@ -13,6 +13,16 @@ const DIR = path.dirname(fileURLToPath(import.meta.url));
 const FILE = path.join(DIR, 'paperbite_index.html');
 const html = fs.readFileSync(FILE, 'utf8');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+const PAPERS_JSON = path.join(DIR, 'papers.json');
+// papers.json은 이제 수집기가 만든 실제 콘텐츠가 들어있는 진짜 파일이라, 테스트가 끝나고
+// 그냥 지워버리면 안 된다 — 있던 내용을 기억해 뒀다가 테스트가 끝나면 그대로 되돌린다.
+async function withTempPapersJson(content, fn) {
+  const had = fs.existsSync(PAPERS_JSON);
+  const backup = had ? fs.readFileSync(PAPERS_JSON) : null;
+  fs.writeFileSync(PAPERS_JSON, JSON.stringify(content));
+  try { await fn(); }
+  finally { if (had) fs.writeFileSync(PAPERS_JSON, backup); else fs.rmSync(PAPERS_JSON, { force: true }); }
+}
 
 let pass = 0;
 function t(name, fn) {
@@ -402,6 +412,15 @@ async function flow() {
     return (await text()).includes(label);
   };
   const readSentences = async n => { for (let i = 0; i < n; i++) { await ev(`document.querySelector('#next').click()`); await sleep(110); } };
+  // field+tags로 좁힌 풀 안에 같은 태그를 쓰는 논문이 늘어나도(새 수집 콘텐츠 등) 깨지지 않게,
+  // 넉넉한 횟수만큼 "다른 논문"을 눌러가며 제목으로 특정 논문을 찾는다(풀 크기를 가정하지 않는다).
+  const selectPaperByTitle = async (titleSubstr, maxTries = 15) => {
+    for (let i = 0; i < maxTries; i++) {
+      if ((await ev(`document.querySelector('.h2').textContent`)).includes(titleSubstr)) return true;
+      await click('다른 논문'); await sleep(150);
+    }
+    return (await ev(`document.querySelector('.h2').textContent`)).includes(titleSubstr);
+  };
   // 퀴즈 문항 수와 상관없이 전부 정답으로 끝까지 진행한다(결과 화면까지)
   const finishQuizAllCorrect = async (maxSteps = 6) => {
     for (let i = 0; i < maxSteps; i++) {
@@ -544,13 +563,8 @@ async function flow() {
   });
 
   await ta('핵심 단어 선택 문제 유형이 표시된다', async () => {
-    await reset({ field: 'soc', tags: ['불평등·사회학'] }); // 3편 중 soc-dcr9b를 찾아간다
-    let found = false;
-    for (let i = 0; i < 3; i++) {
-      if ((await ev(`document.querySelector('.h2').textContent`)).includes('Income Inequality and Belief')) { found = true; break; }
-      await click('다른 논문'); await sleep(150);
-    }
-    assert.ok(found, 'soc-dcr9b를 찾지 못함');
+    await reset({ field: 'soc', tags: ['불평등·사회학'] }); // 이 태그를 쓰는 논문 중 soc-dcr9b를 찾아간다
+    assert.ok(await selectPaperByTitle('Income Inequality and Belief'), 'soc-dcr9b를 찾지 못함');
     await ev(`document.querySelector('.btn.primary').click()`); await sleep(150);
     await readSentences(5);
     await click('퀴즈 풀기'); await sleep(200);
@@ -558,7 +572,8 @@ async function flow() {
   });
 
   await ta('문장 순서 맞추기: 오답은 다시 배열, 재도전 정답은 첫 시도로 잘못 채점되지 않는다', async () => {
-    await reset({ field: 'hum', tags: ['디지털 인문학'] }); // hum-des5 하나로 좁힌다
+    await reset({ field: 'hum', tags: ['디지털 인문학'] }); // 이 태그를 쓰는 논문 중 순서 맞추기 문제가 있는 hum-des5를 찾아간다
+    assert.ok(await selectPaperByTitle("Leibniz's dream"), 'hum-des5를 찾지 못함');
     await ev(`document.querySelector('.btn.primary').click()`); await sleep(150);
     await readSentences(5);
     await click('퀴즈 풀기'); await sleep(200);
@@ -582,6 +597,7 @@ async function flow() {
   });
   await ta('문장 순서 맞추기: 첫 시도에 바로 맞히면 첫 시도 점수(+20 이상)를 받는다', async () => {
     await reset({ field: 'hum', tags: ['디지털 인문학'] });
+    assert.ok(await selectPaperByTitle("Leibniz's dream"), 'hum-des5를 찾지 못함');
     await ev(`document.querySelector('.btn.primary').click()`); await sleep(150);
     await readSentences(5);
     await click('퀴즈 풀기'); await sleep(200);
@@ -721,6 +737,7 @@ async function flow() {
 
   await ta('접근성: 순서 맞추기 문제도 숫자 키만으로 풀 수 있다', async () => {
     await reset({ field: 'hum', tags: ['디지털 인문학'] });
+    assert.ok(await selectPaperByTitle("Leibniz's dream"), 'hum-des5를 찾지 못함');
     await ev(`document.querySelector('.btn.primary').click()`); await sleep(150);
     await readSentences(5);
     await click('퀴즈 풀기'); await sleep(200);
@@ -808,8 +825,7 @@ async function flow() {
       quiz: [{ type: 'mc', q: '테스트 질문?', opts: ['정답', '오답1', '오답2'], why: '테스트' }],
       needsTransform: false, canPersist: true,
     }];
-    fs.writeFileSync(path.join(DIR, 'papers.json'), JSON.stringify(extra));
-    try {
+    await withTempPapersJson(extra, async () => {
       await reset({ field: 'sci', tags: [] });
       let found = false;
       for (let i = 0; i < 12 && !found; i++) {
@@ -817,23 +833,18 @@ async function flow() {
         if (!found) { await click('다른 논문'); await sleep(150); }
       }
       assert.ok(found, '수집기가 넣은 논문이 풀에 섞여 결국 한 번은 보여야 함');
-    } finally {
-      fs.rmSync(path.join(DIR, 'papers.json'), { force: true });
-    }
+    });
   });
 
   await ta('수집기 출력에 변환이 안 된(needsTransform) 논문이 섞여 있으면 걸러낸다', async () => {
     const extra = [{ id: 'ext-test-2', field: 'sci', tags: ['기타'], source: 'x', title: '아직 변환 안 됨', lic: 'ccby', needsTransform: true, sents: [] }];
-    fs.writeFileSync(path.join(DIR, 'papers.json'), JSON.stringify(extra));
-    try {
+    await withTempPapersJson(extra, async () => {
       await reset({ field: 'sci', tags: [] });
       await sleep(400);
       let seen = false;
       for (let i = 0; i < 6; i++) { if ((await text()).includes('아직 변환 안 됨')) { seen = true; break; } await click('다른 논문'); await sleep(120); }
       assert.equal(seen, false, 'needsTransform인 항목은 보이면 안 됨');
-    } finally {
-      fs.rmSync(path.join(DIR, 'papers.json'), { force: true });
-    }
+    });
   });
 
   await ta('범위 설정 패널은 칩을 눌러도 펼친 상태가 유지된다', async () => {
@@ -869,8 +880,7 @@ async function flow() {
       sents: ['하나.', '둘.', '셋.', '넷.', '다섯.'], quiz: [{ type: 'mc', q: 'q?', opts: ['a', 'b', 'c'], why: 'w' }],
       terms: [], needsTransform: false, canPersist: true,
     }];
-    fs.writeFileSync(path.join(DIR, 'papers.json'), JSON.stringify(extra));
-    try {
+    await withTempPapersJson(extra, async () => {
       await reset({ field: 'sci', tags: [] });
       let found = false;
       for (let i = 0; i < 12 && !found; i++) { found = (await text()).includes('BY-SA 테스트 논문'); if (!found) { await click('다른 논문'); await sleep(150); } }
@@ -878,9 +888,7 @@ async function flow() {
       assert.ok((await text()).includes('가공 가능(CC BY-SA)'), 'CC BY-SA가 확인 필요로 잘못 표시되면 안 됨');
       await ev(`document.querySelector('.badge[class*=lic-]').click()`); await sleep(150);
       assert.ok((await text()).includes('동일조건 고지'));
-    } finally {
-      fs.rmSync(path.join(DIR, 'papers.json'), { force: true });
-    }
+    });
   });
 
   await ta('측정: 오늘 이미 끝낸 퀴즈를 다시 풀어도 정답률 분모가 늘지 않는다', async () => {
